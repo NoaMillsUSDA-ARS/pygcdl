@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pygcdl &mdash; pygcdl 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pygcdl
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pygcdl</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pygcdl</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pygcdl</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pygcdl</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">urllib.parse</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">geopandas</span> <span class="k">as</span> <span class="nn">gpd</span>
+<span class="kn">import</span> <span class="nn">shapely</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">errno</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+
+<div class="viewcode-block" id="PyGeoCDL">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL">[docs]</a>
+<span class="k">class</span> <span class="nc">PyGeoCDL</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Object used to interact with GeoCDL through python</span>
+
+<span class="sd">    :param url_base: IP address of the server hosting the GeoCDL. Defaults </span>
+<span class="sd">        to address of the Ceres service node.</span>
+<span class="sd">    :type url_base: str, optional</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url_base</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">url_base</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">=</span> <span class="s1">&#39;http://10.1.1.80:8000&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">=</span> <span class="n">url_base</span>
+
+<div class="viewcode-block" id="PyGeoCDL.list_datasets">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.list_datasets">[docs]</a>
+    <span class="k">def</span> <span class="nf">list_datasets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the ID and name of all available GeoCDL datasets. The</span>
+<span class="sd">        dataset information is returned as a dictionary in which the dataset</span>
+<span class="sd">        IDs are the keys and the dataset names are the values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">+</span> <span class="s1">&#39;/list_datasets&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="n">val</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]:</span> <span class="n">val</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()}</span></div>
+
+
+<div class="viewcode-block" id="PyGeoCDL.get_dataset_info">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.get_dataset_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_dataset_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsid</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns all metadata for the dataset with the given dataset ID. The</span>
+<span class="sd">        metadata are returned as a dictionary of key: value pairs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">+</span> <span class="s1">&#39;/ds_info&#39;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">dsid</span><span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="PyGeoCDL.upload_geometry">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.upload_geometry">[docs]</a>
+    <span class="k">def</span> <span class="nf">upload_geometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geom</span><span class="p">:</span><span class="n">Union</span><span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Uploads a user geometry to the GeoCDL REST API and returns a </span>
+<span class="sd">        geometry upload ID to use in subset requests.</span>
+
+<span class="sd">        :param geom: Geometry to upload</span>
+<span class="sd">        :type geom: Union[os.PathLike, str, gpd.GeoDataFrame]</span>
+<span class="sd">        :return: A Geometry Upload ID (GUID), or list of GUIDs to use in</span>
+<span class="sd">            subsequent requests</span>
+<span class="sd">        :rtype: Union[str, list]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Case 0: geom is a pathlike object, convert to a file path string</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">):</span>
+            <span class="n">geom</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+
+        <span class="c1"># Case 1: geom is a file</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;File not found&quot;</span><span class="p">)</span>
+            <span class="n">file_ext</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span><span class="o">.</span><span class="n">suffix</span>
+            <span class="k">if</span> <span class="n">file_ext</span> <span class="o">==</span> <span class="s2">&quot;.geojson&quot;</span> <span class="ow">or</span> <span class="n">file_ext</span> <span class="o">==</span> <span class="s2">&quot;.zip&quot;</span> \
+                <span class="ow">or</span> <span class="n">file_ext</span> <span class="o">==</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
+                <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;geom_file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))}</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">+</span> <span class="s1">&#39;/upload_geom&#39;</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="n">files</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s1">&#39;application/json&#39;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;detail&quot;</span><span class="p">])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                <span class="n">response_dict</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">response_dict</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span>
+
+            <span class="k">elif</span> <span class="n">file_ext</span> <span class="o">==</span> <span class="s2">&quot;.shp&quot;</span><span class="p">:</span>
+
+                <span class="c1"># Call utility function to zip all auxillary shapefile files </span>
+                <span class="c1"># together</span>
+                <span class="n">zip_file_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_zip_shapefiles</span><span class="p">(</span><span class="n">geom</span><span class="p">))</span>
+
+                <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;geom_file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">zip_file_path</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">zip_file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))}</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">+</span> <span class="s1">&#39;/upload_geom&#39;</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="n">files</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s1">&#39;application/json&#39;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;detail&quot;</span><span class="p">])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                <span class="n">response_dict</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">response_dict</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;File format not yet supported&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Case 2: geom is a geodataframe</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">):</span>
+            <span class="c1"># Easy case: Either point data or a single polygon</span>
+            <span class="k">if</span> <span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;Polygon&quot;</span><span class="p">))</span> <span class="ow">or</span> \
+                <span class="nb">all</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;Point&quot;</span><span class="p">)):</span>
+                <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>
+                    <span class="n">outpath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;upload.shp&quot;</span>
+                    <span class="n">geom</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+                    <span class="n">geom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">outpath</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">geom</span>
+
+            <span class="k">else</span><span class="p">:</span> <span class="c1"># Hard case: geom contains multiple polygons</span>
+                <span class="c1"># This could be either multiple rows of Polygons, or any number</span>
+                <span class="c1"># of MultiPolygons</span>
+                <span class="n">geom_union</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">unary_union</span>
+                <span class="k">if</span> <span class="n">geom_union</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;Polygon&quot;</span><span class="p">:</span>
+                    <span class="n">upload_gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">crs</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> 
+                        <span class="n">geometry</span><span class="o">=</span><span class="p">[</span><span class="n">geom_union</span><span class="p">])</span>
+                    <span class="n">guid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="n">upload_gdf</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">guid</span>
+                <span class="k">elif</span> <span class="n">geom_union</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;MultiPolygon&quot;</span><span class="p">:</span>
+                    <span class="n">union_area</span> <span class="o">=</span> <span class="n">geom_union</span><span class="o">.</span><span class="n">area</span> 
+                    <span class="n">convex_hull</span> <span class="o">=</span> <span class="n">geom_union</span><span class="o">.</span><span class="n">convex_hull</span>
+                    <span class="n">convex_hull_area</span> <span class="o">=</span> <span class="n">convex_hull</span><span class="o">.</span><span class="n">area</span>
+                    <span class="n">ratio</span> <span class="o">=</span> <span class="n">union_area</span> <span class="o">/</span> <span class="n">convex_hull_area</span>
+                    <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+                        <span class="n">upload_gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
+                            <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> 
+                            <span class="n">crs</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
+                            <span class="n">geometry</span><span class="o">=</span><span class="p">[</span><span class="n">convex_hull</span><span class="p">])</span>
+                        <span class="n">guid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="n">upload_gdf</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="n">guid</span>
+                    <span class="k">else</span><span class="p">:</span> 
+                        <span class="n">upload_gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
+                            <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geom_union</span><span class="o">.</span><span class="n">geoms</span><span class="p">)),</span> 
+                            <span class="n">crs</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> 
+                            <span class="n">geometry</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">geom_union</span><span class="o">.</span><span class="n">geoms</span><span class="p">))</span>
+                        <span class="n">guid</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="n">upload_gdf</span><span class="p">[</span><span class="n">upload_gdf</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">upload_gdf</span><span class="p">))]</span>
+                        <span class="k">return</span> <span class="n">guid</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Geometry not supported&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PyGeoCDL.download_polygon_subset">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.download_polygon_subset">[docs]</a>
+    <span class="k">def</span> <span class="nf">download_polygon_subset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dsvars</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">dict</span><span class="p">],</span>
+        <span class="n">dates</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">years</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">months</span><span class="p">:</span>  <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_crs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="n">resolution</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_geom</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_format</span> <span class="o">=</span> <span class="s1">&#39;geotiff&#39;</span><span class="p">,</span>
+        <span class="n">grain_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">validate_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">ri_method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+        <span class="n">dsn</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+        <span class="n">req_name</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Download raster data clipped to polygon boundaries</span>
+
+<span class="sd">        :param dsvars: Specifies the datasets and variables requested</span>
+<span class="sd">        :type dsvars: Union[pandas.DataFrame, numpy.ndarray, list, dict]</span>
+<span class="sd">        :param dates: List of dates requested.</span>
+<span class="sd">        :type dates: Optional[list[str]]</span>
+<span class="sd">        :param years: List of years requested. Ignored if `dates` is specified</span>
+<span class="sd">        :type years: Optional[str]</span>
+<span class="sd">        :param months: List of months requested. Ignored if `dates` is specified</span>
+<span class="sd">        :type month: Optional[str]</span>
+<span class="sd">        :param days: List of days requested. Ignored if `dates` is specified</span>
+<span class="sd">        :type days: Optional[str]</span>
+<span class="sd">        :param t_crs: Target CRS. Also used as the crs of the uploaded geometry if</span>
+<span class="sd">            no geographic metadata is included.</span>
+<span class="sd">        :type t_crs: Optional[str]</span>
+<span class="sd">        :param t_geom: Target geometry, either a GUID, and list of GUIDs, or a </span>
+<span class="sd">            gpd.GeoDataFrame. If not set, GeoCDL returns the entire spatial extent of the dataset.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="s1">&#39;subset_polygon&#39;</span>
+
+        <span class="n">q_str</span><span class="p">,</span> <span class="n">param_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_subset_query</span><span class="p">(</span>
+            <span class="n">dsvars</span><span class="o">=</span><span class="n">dsvars</span><span class="p">,</span> 
+            <span class="n">endpoint</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">dates</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span> 
+            <span class="n">years</span><span class="o">=</span><span class="n">years</span><span class="p">,</span> 
+            <span class="n">months</span><span class="o">=</span><span class="n">months</span><span class="p">,</span> 
+            <span class="n">days</span><span class="o">=</span><span class="n">days</span><span class="p">,</span> 
+            <span class="n">t_crs</span><span class="o">=</span><span class="n">t_crs</span><span class="p">,</span> 
+            <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span> 
+            <span class="n">t_geom</span><span class="o">=</span><span class="n">t_geom</span><span class="p">,</span>
+            <span class="n">out_format</span><span class="o">=</span><span class="n">out_format</span><span class="p">,</span> 
+            <span class="n">grain_method</span><span class="o">=</span><span class="n">grain_method</span><span class="p">,</span>
+            <span class="n">validate_method</span><span class="o">=</span><span class="n">validate_method</span><span class="p">,</span>
+            <span class="n">ri_method</span><span class="o">=</span><span class="n">ri_method</span><span class="p">)</span>
+
+        <span class="n">out_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_submit_subset_query</span><span class="p">(</span><span class="n">q_str</span><span class="p">,</span> <span class="n">param_dict</span><span class="p">,</span> <span class="n">dsn</span><span class="p">,</span> <span class="n">req_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out_files</span></div>
+
+
+<div class="viewcode-block" id="PyGeoCDL.download_points_subset">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.download_points_subset">[docs]</a>
+    <span class="k">def</span> <span class="nf">download_points_subset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dsvars</span><span class="p">,</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">years</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">months</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">days</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_crs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="n">resolution</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_geom</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_format</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span><span class="p">,</span>
+        <span class="n">grain_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">validate_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">ri_method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+        <span class="n">dsn</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+        <span class="n">req_name</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">):</span>
+
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="s1">&#39;subset_points&#39;</span>
+        <span class="n">q_str</span><span class="p">,</span> <span class="n">param_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_subset_query</span><span class="p">(</span>
+            <span class="n">dsvars</span><span class="o">=</span><span class="n">dsvars</span><span class="p">,</span> 
+            <span class="n">endpoint</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">dates</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span> 
+            <span class="n">years</span><span class="o">=</span><span class="n">years</span><span class="p">,</span> 
+            <span class="n">months</span><span class="o">=</span><span class="n">months</span><span class="p">,</span> 
+            <span class="n">days</span><span class="o">=</span><span class="n">days</span><span class="p">,</span> 
+            <span class="n">t_crs</span><span class="o">=</span><span class="n">t_crs</span><span class="p">,</span> 
+            <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span> 
+            <span class="n">t_geom</span><span class="o">=</span><span class="n">t_geom</span><span class="p">,</span>
+            <span class="n">out_format</span><span class="o">=</span><span class="n">out_format</span><span class="p">,</span> 
+            <span class="n">grain_method</span><span class="o">=</span><span class="n">grain_method</span><span class="p">,</span>
+            <span class="n">validate_method</span><span class="o">=</span><span class="n">validate_method</span><span class="p">,</span>
+            <span class="n">ri_method</span><span class="o">=</span><span class="n">ri_method</span><span class="p">)</span>
+
+        <span class="n">out_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_submit_subset_query</span><span class="p">(</span><span class="n">q_str</span><span class="p">,</span> <span class="n">param_dict</span><span class="p">,</span> <span class="n">dsn</span><span class="p">,</span> <span class="n">req_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out_files</span></div>
+
+    
+<div class="viewcode-block" id="PyGeoCDL.download_subset">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.download_subset">[docs]</a>
+    <span class="k">def</span> <span class="nf">download_subset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dsvars</span><span class="p">,</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">years</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">months</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">days</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_crs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">resolution</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_geom</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_format</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grain_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">validate_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">ri_method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+        <span class="n">dsn</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+        <span class="n">req_name</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_endpoint</span><span class="p">(</span><span class="n">t_geom</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Endpoint = &quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s2">&quot;subset_polygon&quot;</span><span class="p">:</span>
+            <span class="n">out_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">download_polygon_subset</span><span class="p">(</span>
+                <span class="n">dsvars</span><span class="p">,</span>
+                <span class="n">dates</span><span class="p">,</span> 
+                <span class="n">years</span><span class="p">,</span> 
+                <span class="n">months</span><span class="p">,</span> 
+                <span class="n">days</span><span class="p">,</span>
+                <span class="n">t_crs</span><span class="p">,</span> 
+                <span class="n">resolution</span><span class="p">,</span> 
+                <span class="n">t_geom</span><span class="p">,</span>
+                <span class="n">out_format</span><span class="p">,</span>
+                <span class="n">grain_method</span><span class="p">,</span> 
+                <span class="n">validate_method</span><span class="p">,</span>
+                <span class="n">ri_method</span><span class="p">,</span>
+                <span class="n">dsn</span><span class="p">,</span> 
+                <span class="n">req_name</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s2">&quot;subset_points&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">resolution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Resolution parameter not applicable for point extraction&quot;</span><span class="p">)</span>
+            <span class="n">out_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">download_points_subset</span><span class="p">(</span>
+                <span class="n">dsvars</span><span class="p">,</span>
+                <span class="n">dates</span><span class="p">,</span> 
+                <span class="n">years</span><span class="p">,</span> 
+                <span class="n">months</span><span class="p">,</span> 
+                <span class="n">days</span><span class="p">,</span>
+                <span class="n">t_crs</span><span class="p">,</span>
+                <span class="n">resolution</span><span class="p">,</span> 
+                <span class="n">t_geom</span><span class="p">,</span>
+                <span class="n">out_format</span><span class="p">,</span>
+                <span class="n">grain_method</span><span class="p">,</span> 
+                <span class="n">validate_method</span><span class="p">,</span>
+                <span class="n">ri_method</span><span class="p">,</span>
+                <span class="n">dsn</span><span class="p">,</span> 
+                <span class="n">req_name</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Unknown endpoint&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out_files</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_format_subset_query</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dsvars</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">,</span>
+        <span class="n">dates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">years</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">months</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_crs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+        <span class="n">resolution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">t_geom</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_format</span><span class="o">=</span><span class="s1">&#39;geotiff&#39;</span><span class="p">,</span>
+        <span class="n">grain_method</span><span class="o">=</span><span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">validate_method</span><span class="o">=</span><span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">ri_method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+    <span class="p">):</span>
+
+        <span class="n">get_params_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+         <span class="c1"># Format datasets and variables into string</span>
+        <span class="n">dv_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_dsvars</span><span class="p">(</span><span class="n">dsvars</span><span class="p">)</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dv_str</span><span class="p">)</span>
+
+        <span class="c1"># Format user geometry</span>
+        <span class="n">spatial_subset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_geometry</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">t_geom</span><span class="p">)</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">spatial_subset</span><span class="p">)</span>
+
+        <span class="c1"># Format spatial parameters (crs, resolution, interpolation/resampling method)</span>
+        <span class="n">spatial_parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_spatial_parameters</span><span class="p">(</span>
+            <span class="n">endpoint</span><span class="p">,</span> 
+            <span class="n">ri_method</span><span class="p">,</span> 
+            <span class="n">t_crs</span><span class="p">,</span> 
+            <span class="n">resolution</span>
+        <span class="p">)</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">spatial_parameters</span><span class="p">)</span>
+
+        <span class="c1"># Format temporal subset instructions</span>
+        <span class="n">temporal_subset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_dates</span><span class="p">(</span><span class="n">dates</span><span class="p">,</span> <span class="n">years</span><span class="p">,</span> <span class="n">months</span><span class="p">,</span> <span class="n">days</span><span class="p">)</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">temporal_subset</span><span class="p">)</span>
+
+        <span class="c1"># Temporal parameters (grain method, validate method)</span>
+        <span class="n">temporal_parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_temporal_parameters</span><span class="p">(</span>
+            <span class="n">grain_method</span><span class="p">,</span> 
+            <span class="n">validate_method</span>
+        <span class="p">)</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">temporal_parameters</span><span class="p">)</span>
+
+        <span class="c1"># Other parameters</span>
+        <span class="n">other_parameters</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">out_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">other_parameters</span><span class="p">[</span><span class="s1">&#39;output_format&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">out_format</span>
+        <span class="n">get_params_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">other_parameters</span><span class="p">)</span>
+        
+        
+        <span class="c1"># Build query</span>
+        <span class="n">query_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">url_base</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">endpoint</span>
+
+        <span class="k">return</span> <span class="n">query_str</span><span class="p">,</span> <span class="n">get_params_dict</span>
+
+    <span class="k">def</span> <span class="nf">_submit_subset_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_str</span><span class="p">,</span> <span class="n">param_dict</span><span class="p">,</span> <span class="n">dsn</span><span class="p">,</span> <span class="n">req_name</span><span class="p">):</span>
+        <span class="c1"># dsn = path to directory</span>
+        <span class="c1"># req_name = name of folder to put in dsn, with downloaded data</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">dsn</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Destination folder DNE&quot;</span><span class="p">)</span>
+
+        <span class="n">dsn</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dsn</span><span class="p">)</span>
+
+        <span class="c1"># Create output zip file path, based on time and date of creation</span>
+        <span class="k">if</span> <span class="n">req_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">basename</span> <span class="o">=</span> <span class="s2">&quot;gcdl_subset&quot;</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+            <span class="n">output_dir</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">basename</span><span class="p">,</span> <span class="n">suffix</span><span class="p">])</span>
+        
+        <span class="c1"># Check to see if EITHER clip for geom_guid is provided.</span>
+        <span class="c1"># Set num_queries equal to the number of geometries.</span>
+        <span class="c1"># Request can have multiple geometries if user submitted a multipolygon</span>
+        <span class="n">GUID</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="s2">&quot;geom_guid&quot;</span> <span class="ow">in</span> <span class="n">param_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">GUID</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">spatial_params</span> <span class="o">=</span> <span class="n">param_dict</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spatial_params</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">param_dict</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">spatial_params</span><span class="p">]</span>
+                <span class="n">num_queries</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spatial_params</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">num_queries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spatial_params</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;clip&quot;</span> <span class="ow">in</span> <span class="n">param_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">num_queries</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;No query provided&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">out_files</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_queries</span><span class="p">):</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">q</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">subset_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dsn</span><span class="p">)</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+            <span class="n">subset_zip</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">subset_dir</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.zip&quot;</span><span class="p">)</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">param_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">GUID</span><span class="p">:</span> <span class="c1"># Iterate through possible list of GUIDs</span>
+                <span class="n">req_spatial</span> <span class="o">=</span> <span class="n">param_dict</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">][</span><span class="n">q</span><span class="p">]</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">req_spatial</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query_str</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Status_code: &quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s1">&#39;application/json&#39;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;detail&quot;</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Write contents to zip file in chunks</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">subset_zip</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">iter_content</span><span class="p">(</span><span class="n">chunk_size</span><span class="o">=</span><span class="mi">8192</span><span class="p">):</span> 
+                        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+                <span class="c1"># Unzip subset_zip</span>
+                <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">subset_zip</span><span class="p">)),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Files downloaded and unzipped: &quot;</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">namelist</span><span class="p">())</span>
+                    <span class="n">file_names</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span>
+                    <span class="c1"># add output directory to file name</span>
+                    <span class="n">file_names_out</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">dsn</span> <span class="o">/</span> <span class="n">k</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">namelist</span><span class="p">()]</span>
+                    <span class="n">out_files</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">file_names_out</span><span class="p">)</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">dsn</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">out_files</span>
+
+    <span class="c1"># Helper function for identifying auxillary shapefile files and compressing</span>
+    <span class="c1"># them into a zip folder for upload</span>
+
+    <span class="k">def</span> <span class="nf">_zip_shapefiles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+
+        <span class="n">file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span>
+
+        <span class="n">suffix_list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;.shp&quot;</span><span class="p">,</span> <span class="s2">&quot;.shx&quot;</span><span class="p">,</span> <span class="s2">&quot;.dbf&quot;</span><span class="p">,</span> <span class="s2">&quot;.prj&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Create a new folder for shapefiles to be zipped in</span>
+        <span class="n">output_zip_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.zip&quot;</span><span class="p">))</span>
+
+        <span class="c1"># Add each auxillary file, check to make sure they exist</span>
+        <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">output_zip_dir</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">z</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">suffix_list</span><span class="p">:</span>
+                <span class="n">new_file</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">new_file</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="n">errno</span><span class="o">.</span><span class="n">ENOENT</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="o">.</span><span class="n">ENOENT</span><span class="p">),</span> <span class="n">new_file</span><span class="p">)</span>
+                <span class="n">z</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_file</span><span class="p">,</span> <span class="n">arcname</span><span class="o">=</span><span class="n">new_file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">return</span><span class="p">(</span><span class="n">output_zip_dir</span><span class="p">)</span>
+
+    <span class="c1"># Input ds is a pandas DataFrame, a numpy array, a matrix, or a </span>
+    <span class="c1"># dictionary containing dataset names and variable names.</span>
+    <span class="c1"># If input is not a pandas DataFrame, convert to a DataFrame.</span>
+    <span class="c1"># Return the url-encoded string containing dataset and variable</span>
+    <span class="c1"># specifications.</span>
+    <span class="k">def</span> <span class="nf">_format_dsvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsvars</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">dsvars</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;variable&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;variable&quot;</span><span class="p">])</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;variable&quot;</span><span class="p">])</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dsvars</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">dsvars_out</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;variable&quot;</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">var_list</span> <span class="ow">in</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">var_list</span><span class="p">:</span>
+                    <span class="n">dsvars_out</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">dsvars_out</span><span class="o">.</span><span class="n">index</span><span class="p">)]</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataset</span><span class="p">,</span> <span class="n">var</span><span class="p">]</span>
+            <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars_out</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Dataset variables format not accepted&quot;</span><span class="p">)</span>
+
+        <span class="n">dsvars</span><span class="p">[</span><span class="s1">&#39;variable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;dataset&#39;</span><span class="p">])[</span><span class="s1">&#39;variable&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> 
+        <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+        <span class="n">dsvars</span> <span class="o">=</span> <span class="n">dsvars</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">dsvars</span><span class="p">[</span><span class="s1">&#39;variable&#39;</span><span class="p">],</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">dsvars</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">sep</span><span class="o">=</span><span class="s1">&#39;;&#39;</span><span class="p">)</span>
+        <span class="n">dsvars_str</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;datasets&quot;</span><span class="p">:</span> <span class="n">output</span><span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">dsvars_str</span><span class="p">)</span>
+
+    <span class="c1"># Create string specifying dates for request</span>
+    <span class="k">def</span> <span class="nf">_format_dates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">years</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">months</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">days</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">temporal_subset</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">dates</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dates</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;dates&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dates</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;dates&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dates</span>
+        <span class="k">elif</span> <span class="n">years</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;years&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">years</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;years&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">years</span>
+            <span class="k">if</span> <span class="n">months</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">months</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;months&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">months</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;months&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">months</span>
+            <span class="k">if</span> <span class="n">days</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">days</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">days</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">temporal_subset</span><span class="p">[</span><span class="s2">&quot;days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">days</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">temporal_subset</span><span class="p">)</span>
+
+    <span class="c1"># Create string representing geometry information for request</span>
+    <span class="k">def</span> <span class="nf">_format_geometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">,</span> <span class="n">geom</span><span class="p">):</span>
+        <span class="n">spatial_subset</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">geom</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No geometry specified&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">spatial_subset</span>
+
+        <span class="c1"># A string geom could be either a guid, a filename, or a geodataframe</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># if geom is a single guid</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span> <span class="o">==</span> <span class="mi">36</span> <span class="ow">and</span> <span class="ow">not</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">geom</span> <span class="ow">and</span> <span class="s2">&quot;(&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">geom</span><span class="p">:</span>
+                <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geom</span>
+            <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot;.zip&quot;</span> <span class="ow">in</span> <span class="n">geom</span> <span class="ow">or</span> <span class="s2">&quot;.shp&quot;</span> <span class="ow">in</span> <span class="n">geom</span> <span class="ow">or</span> <span class="s2">&quot;.geojson&quot;</span> <span class="ow">in</span> <span class="n">geom</span> <span class="ow">or</span>
+                    <span class="s2">&quot;.csv&quot;</span> <span class="ow">in</span> <span class="n">geom</span><span class="p">):</span> 
+                <span class="c1"># assume geom is a filename, attempt to upload</span>
+                <span class="n">geom_guid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+                <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geom_guid</span>
+
+        <span class="c1"># Geom is a list of guids</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">all</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mi">36</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">))):</span>
+            <span class="n">guid_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">)):</span>
+                <span class="n">guid_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">geom</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">guid_list</span>
+
+        <span class="c1"># Geom is a geodataframe to upload</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">):</span>
+            <span class="n">geom_guid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_geometry</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+            <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;geom_guid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geom_guid</span>
+
+        <span class="c1"># Geom is a set of clip coordinates in the form of a 2D ndarray</span>
+        <span class="c1"># or a np.matrix</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">geom</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> \
+                <span class="n">geom</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">row_to_string</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="n">out_str</span> <span class="o">=</span> <span class="s2">&quot;(</span><span class="si">{}</span><span class="s2">,</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">out_str</span>
+            <span class="n">clip_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">apply_along_axis</span><span class="p">(</span><span class="n">row_to_string</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">arr</span><span class="o">=</span><span class="n">geom</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s2">&quot;subset_polygon&quot;</span><span class="p">:</span>
+                <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;clip&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">clip_str</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">spatial_subset</span><span class="p">[</span><span class="s2">&quot;points&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">clip_str</span>
+
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Geometry configuration not implemented&quot;</span><span class="p">)</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">spatial_subset</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_temporal_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grain_method</span><span class="p">,</span> <span class="n">validate_method</span><span class="p">):</span>
+        <span class="n">temporal_parameters</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;grain_method&quot;</span><span class="p">:</span> <span class="n">grain_method</span><span class="p">,</span>
+            <span class="s2">&quot;validate_method&quot;</span><span class="p">:</span> <span class="n">validate_method</span>
+        <span class="p">}</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">temporal_parameters</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_spatial_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">endpoint</span><span class="p">,</span> 
+        <span class="n">ri_method</span><span class="p">,</span> 
+        <span class="n">t_crs</span><span class="p">,</span> 
+        <span class="n">resolution</span>
+    <span class="p">):</span>
+        <span class="n">spatial_parameters</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s2">&quot;subset_points&quot;</span><span class="p">:</span>
+            <span class="n">spatial_parameters</span><span class="p">[</span><span class="s2">&quot;interpolation_method&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ri_method</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">spatial_parameters</span><span class="p">[</span><span class="s2">&quot;resample_method&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ri_method</span>
+        
+        <span class="k">if</span> <span class="n">t_crs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spatial_parameters</span><span class="p">[</span><span class="s2">&quot;crs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">t_crs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">resolution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spatial_parameters</span><span class="p">[</span><span class="s2">&quot;resolution&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">resolution</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">spatial_parameters</span>
+
+<div class="viewcode-block" id="PyGeoCDL.infer_endpoint">
+<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.infer_endpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">infer_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geom</span><span class="p">):</span>
+        <span class="n">poly_ep</span> <span class="o">=</span> <span class="s2">&quot;subset_polygon&quot;</span>
+        <span class="n">pt_ep</span> <span class="o">=</span> <span class="s2">&quot;subset_points&quot;</span>
+
+        <span class="c1"># If null, then it assumed user wants whole area of datasets</span>
+        <span class="k">if</span> <span class="n">geom</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">poly_ep</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;Polygon&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+            <span class="nb">any</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;MultiPolygon&quot;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">poly_ep</span>
+            <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;Point&quot;</span><span class="p">)</span> <span class="ow">or</span> \
+            <span class="nb">any</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s2">&quot;MultiPoint&quot;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">pt_ep</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Unrecognized geometry type. Could not infer GeoCDL subset endpoint&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Unsupported geometry type for inferring GeoCDL subset endpoint. Please use download_[polygon|points]_subset() directly.&quot;</span><span class="p">)</span></div>
+</div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Noa Mills.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

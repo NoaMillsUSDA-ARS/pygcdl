@@ -12,9 +12,15 @@ import datetime
 import errno
 
 class PyGeoCDL:
-    def __init__(self, url_base=None):
+    """Object used to interact with GeoCDL through python
+
+    :param url_base: IP address of the server hosting the GeoCDL. Defaults 
+        to address of the Ceres service node.
+    :type url_base: str, optional
+    """
+
+    def __init__(self, url_base: str=None):
         if url_base is None:
-            # Address of the service node on Ceres
             self.url_base = 'http://10.1.1.80:8000'
         else:
             self.url_base = url_base
@@ -40,9 +46,16 @@ class PyGeoCDL:
         return r.json()
 
     def upload_geometry(self, geom):
-        # This function uploads a user geometry to the GeoCDL
-        # REST API and returns a geometry upload ID to use
-        # in subset requests.
+        """
+        Uploads a user geometry to the GeoCDL REST API and returns a 
+        geometry upload ID to use in subset requests.
+
+        :param geom: Geometry to upload
+        :type geom: Union[os.PathLike, str, geopandas.GeoDataFrame]
+        :return: A Geometry Upload ID (GUID), or list of GUIDs to use in
+            subsequent requests
+        :rtype: Union[str, list]
+        """
 
         # Case 0: geom is a pathlike object, convert to a file path string
         if isinstance(geom, os.PathLike):
