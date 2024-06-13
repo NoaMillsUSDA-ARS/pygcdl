@@ -135,7 +135,7 @@
 <span class="sd">        geometry upload ID to use in subset requests.</span>
 
 <span class="sd">        :param geom: Geometry to upload</span>
-<span class="sd">        :type geom: Union[os.PathLike, str, gpd.GeoDataFrame]</span>
+<span class="sd">        :type geom: Union[os.PathLike, str, geopandas.GeoDataFrame]</span>
 <span class="sd">        :return: A Geometry Upload ID (GUID), or list of GUIDs to use in</span>
 <span class="sd">            subsequent requests</span>
 <span class="sd">        :rtype: Union[str, list]</span>
@@ -236,12 +236,12 @@
         <span class="n">days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">t_crs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
         <span class="n">resolution</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">t_geom</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">out_format</span> <span class="o">=</span> <span class="s1">&#39;geotiff&#39;</span><span class="p">,</span>
-        <span class="n">grain_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
-        <span class="n">validate_method</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
-        <span class="n">ri_method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
-        <span class="n">dsn</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+        <span class="n">t_geom</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;geotiff&#39;</span><span class="p">,</span>
+        <span class="n">grain_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">validate_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;strict&#39;</span><span class="p">,</span>
+        <span class="n">ri_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+        <span class="n">dsn</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
         <span class="n">req_name</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Download raster data clipped to polygon boundaries</span>
@@ -256,12 +256,30 @@
 <span class="sd">        :type month: Optional[str]</span>
 <span class="sd">        :param days: List of days requested. Ignored if `dates` is specified</span>
 <span class="sd">        :type days: Optional[str]</span>
-<span class="sd">        :param t_crs: Target CRS. Also used as the crs of the uploaded geometry if</span>
-<span class="sd">            no geographic metadata is included.</span>
+<span class="sd">        :param t_crs: Target CRS. Also used as the crs of the uploaded geometry if no geographic metadata is included.</span>
 <span class="sd">        :type t_crs: Optional[str]</span>
-<span class="sd">        :param t_geom: Target geometry, either a GUID, and list of GUIDs, or a </span>
-<span class="sd">            gpd.GeoDataFrame. If not set, GeoCDL returns the entire spatial extent of the dataset.</span>
+<span class="sd">        :param t_geom: The polygon of interest, specified as either a Geometry Upload ID (GUID), and list of GUIDs, a geopandas.GeoDataFrame, or a numpy.ndarray specifying x and y coordinates of a clipping polygon. If only two clipping coordinates are provided, then they are assumed to be opposite corners of a bounding box. Clipping coordinates are assumed to be in the crs specified by `t_crs` if specified, and if not, are assumed to be in the crs of the first requested dataset. If t_geom is not set, GeoCDL returns the entire spatial extent of the dataset.</span>
+<span class="sd">        :type t_geom: Optional[Union[str, list[str], geopandas.GeoDataFrame, numpy.ndarray]]</span>
+<span class="sd">        :param out_format: Desired format of output files. Choose from &quot;geotiff&quot; or &quot;netcdf&quot;. Default value is &quot;geotiff&quot;.</span>
+<span class="sd">        :type out_format: Optional[str]</span>
+<span class="sd">        :param grain_method: If not all datasets you request have the same temporal grain, e.g. you request monthly data but one dataset only has daily data or only has annual data, you can specify `grain_method` to choose an alternative temporal grain. Options include: </span>
 
+<span class="sd">            * **&quot;strict&quot;**: User will only accept the requested date grain. If date grain is not available, GCDL will throw an error. </span>
+<span class="sd">            * **&quot;skip&quot;**: If date grain is not available, do not return data for that dataset and variable. Will not throw an error. </span>
+<span class="sd">            * **&quot;finer&quot;**: User will accept the requested date grain, or a finer date grain. Finer grains attempted in order from largest to smallest. Ex: if user requests annual date grain and the finer grain method, and annual data is not available, GCDL will first see if monthly data is available, and if not will then try daily data. </span>
+<span class="sd">            * **&quot;coarser&quot;**: User will accept the requested date grain, or a coarser date grain. Coarser grains attempted in order from smallest to largest. </span>
+<span class="sd">            * **&quot;any&quot;**: User will accept any alternative date grain. Alternative grains are attempted from largest to smallest.</span>
+
+<span class="sd">        :type grain_method: Optional[str]</span>
+<span class="sd">        :param validate_method: How to handle requested dates outside of requested dataset available data range. If &quot;strict&quot; (default), an error will be returned. If &quot;overlap&quot;, the requested dates will be truncated to the date range available in all requested datasets. If &quot;all&quot;, then the requested dates will be truncated to the available date range per dataset. Non-temporal datasets are always returned.</span>
+<span class="sd">        :type validate_method: Optional[str]</span>
+<span class="sd">        :param ri_method: Resampling or interpolation method used for reprojection. Resampling methods apply to polygon requests, and interpolation methods apply to point requests. Resampling method options include &quot;nearest&quot;, &quot;bilinear&quot;, &quot;cubic&quot;, &quot;cubic-spline&quot;, &quot;lanczos&quot;, &quot;average&quot;, or &quot;mode&quot;. Interpolation method options include &quot;nearest&quot; and &quot;linear&quot;. Default is &quot;nearest&quot;. Only used if target CRS and/or spatial resolution are provided, otherwise data is returned in the CRS of the dataset and no reprojection is needed. If two methods are provided (comma separated, e.g. &quot;bilinear,nearest&quot;), the first will be used for continuous variables and the second will be used for categorical variables. An error will be returned when methods requested for categorical variables are not applicable.</span>
+<span class="sd">        :type ri_method: Optional[str]</span>
+<span class="sd">        :param dsn: Destination for downloaded files. Default is current working directory.</span>
+<span class="sd">        :type dsn: Optional[Union[str, os.PathLike]]</span>
+<span class="sd">        :param req_name: The request name. Used to name the folder containing the downloaded data. If not set, the output directory is named &quot;gcdl_subset&quot; plus a timestamp of the request.</span>
+<span class="sd">        :type req_name: Optional[str]</span>
+<span class="sd">        :return: A list of downloaded filenames.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">endpoint</span> <span class="o">=</span> <span class="s1">&#39;subset_polygon&#39;</span>
@@ -344,7 +362,7 @@
         <span class="n">dsn</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
         <span class="n">req_name</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">):</span>
-        <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_endpoint</span><span class="p">(</span><span class="n">t_geom</span><span class="p">)</span>
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_infer_endpoint</span><span class="p">(</span><span class="n">t_geom</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Endpoint = &quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s2">&quot;subset_polygon&quot;</span><span class="p">:</span>
             <span class="n">out_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">download_polygon_subset</span><span class="p">(</span>
@@ -598,7 +616,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No geometry specified&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">spatial_subset</span>
 
-        <span class="c1"># A string geom could be either a guid, a filename, or a geodataframe</span>
+        <span class="c1"># A string geom could be either a guid or a file name</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="c1"># if geom is a single guid</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span> <span class="o">==</span> <span class="mi">36</span> <span class="ow">and</span> <span class="ow">not</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">geom</span> <span class="ow">and</span> <span class="s2">&quot;(&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">geom</span><span class="p">:</span>
@@ -668,9 +686,7 @@
 
         <span class="k">return</span> <span class="n">spatial_parameters</span>
 
-<div class="viewcode-block" id="PyGeoCDL.infer_endpoint">
-<a class="viewcode-back" href="../pygcdl.html#pygcdl.PyGeoCDL.infer_endpoint">[docs]</a>
-    <span class="k">def</span> <span class="nf">infer_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geom</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_infer_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">geom</span><span class="p">):</span>
         <span class="n">poly_ep</span> <span class="o">=</span> <span class="s2">&quot;subset_polygon&quot;</span>
         <span class="n">pt_ep</span> <span class="o">=</span> <span class="s2">&quot;subset_points&quot;</span>
 
@@ -688,7 +704,6 @@
                 <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Unrecognized geometry type. Could not infer GeoCDL subset endpoint&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Unsupported geometry type for inferring GeoCDL subset endpoint. Please use download_[polygon|points]_subset() directly.&quot;</span><span class="p">)</span></div>
-</div>
 
 
 </pre></div>
