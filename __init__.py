@@ -1,1 +1,1 @@
-from pygcdl import PyGeoCDL
+from .pygcdl import *
