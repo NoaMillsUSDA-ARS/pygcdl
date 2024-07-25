@@ -1,10 +1,23 @@
 import pygcdl
+import pytest
+from pytest_httpserver import HTTPServer
+import json
 
-# Create pygcdl object
-pygcdl_obj = pygcdl.PyGeoCDL(url_base="http://127.0.0.1:8000")
-
-# Test list_datasets call
-def test_list_datasets():
+# Test list_datasets() call
+def test_list_datasets(httpserver: HTTPServer):
+    url_base = httpserver.url_for("") # base url
+    pygcdl_obj = pygcdl.PyGeoCDL(url_base=url_base)
+    dataset_list = [{"id":"ID", "name":"NAME"}]
+    httpserver.expect_request(uri="/list_datasets").respond_with_json(dataset_list)
     r = pygcdl_obj.list_datasets()
-    expected_response = {'DaymetV4': 'Daymet Version 4', 'GTOPO30': 'Global 30 Arc-Second Elevation', 'MODIS_NDVI': 'MODIS NDVI Data, Smoothed and Gap-filled, for the Conterminous US: 2000-2015', 'NASS_CDL': 'NASS Cropland Data Layer', 'NLCD': 'National Land Cover Database', 'PRISM': 'PRISM', 'RAPV3': 'Rangeland Analysis Platform Version 3', 'SMAP-HB1km': 'SMAP HydroBlocks - 1 km', 'Soilgrids250mV2': 'SoilGrids — global gridded soil information', 'VIP': 'Vegetation Index and Phenology (VIP) Vegetation Indices Daily Global 0.05Deg CMG V004'}
-    assert r == expected_response
+    assert r == {"ID": "NAME"}
+
+# Test get_dataset_info() call
+def test_get_dataset_info(httpserver: HTTPServer):
+    url_base = httpserver.url_for("") # base url
+    pygcdl_obj = pygcdl.PyGeoCDL(url_base=url_base)
+    httpserver.expect_request(uri="/ds_info", query_string="id=PRISM").respond_with_json({"PRISM":"data"})
+    r = pygcdl_obj.get_dataset_info("PRISM")
+    assert r == {"PRISM":"data"}
+
+

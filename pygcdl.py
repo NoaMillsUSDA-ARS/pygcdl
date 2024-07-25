@@ -23,6 +23,9 @@ class PyGeoCDL:
         if url_base is None:
             self.url_base = 'http://10.1.1.80:8000'
         else:
+            # Remove trailing '/' if present
+            if url_base[-1] == "/":
+                url_base = url_base[0:-1]
             self.url_base = url_base
 
     def list_datasets(self):
@@ -42,7 +45,8 @@ class PyGeoCDL:
         """
 
         r = requests.get(self.url_base + '/ds_info', params={'id': dsid})
-
+        print(r.url)
+        print(r.json())
         return r.json()
 
     def upload_geometry(self, geom:Union[os.PathLike, str, gpd.GeoDataFrame]):
